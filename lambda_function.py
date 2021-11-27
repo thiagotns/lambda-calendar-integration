@@ -9,23 +9,32 @@ CALENDAR_ID = os.environ['calendar_id']
 
 def lambda_handler(event, context):
     
-    print("## event: " + json.dumps(event))
-    
-    payload = json.loads(event['body'])
-    
-    entry_id = payload["EntryID"]
-    start_utc = payload["StartUTC"]
-    end_utc = payload["EndUTC"]
-    subject = payload["Subject"]
-    organizer = payload["Organizer"]
-    attendees = []
-    
-    body = {
-        "summary": subject, 
-        "description": subject,
-        "start": {"dateTime": start_utc, "timeZone": 'UTC'}, 
-        "end": {"dateTime": end_utc, "timeZone": 'UTC'}
-    }
+    try:
+        print("## event: " + json.dumps(event))
+        
+        payload = json.loads(event['body'])
+        
+        entry_id = payload["EntryID"]
+        start_utc = payload["StartUTC"]
+        end_utc = payload["EndUTC"]
+        subject = payload["Subject"]
+        organizer = payload["Organizer"]
+        required_attendees = payload["RequiredAttendees"] 
+        optional_attendees = payload["OptionalAttendees"]
+        
+        body = {
+            "summary": subject, 
+            "description": generate_description(subject, organizer, required_attendees, optional_attendees),
+            "start": {"dateTime": start_utc, "timeZone": 'UTC'}, 
+            "end": {"dateTime": end_utc, "timeZone": 'UTC'}
+        }
+                
+    except Exception as e:
+        print(e)
+        return {
+            'statusCode': 412,
+            'body': "Invalid Payload"
+        }
 
     service = create_service(get_service_account_credentials())
     event = service.events().insert(calendarId=CALENDAR_ID, body=body).execute()
@@ -55,6 +64,33 @@ def get_service_account_credentials():
         "client_x509_cert_url": os.environ['client_x509_cert_url']
     }
 
+def generate_description(subject, organizer, required_attendees, optional_attendees):
+    
+    txt = f"<b>{subject}</b>\n<b>Organizer:</b> {organizer}\n\n<b>RequiredAttendees:</b></n>\n"
+    
+    
+    tmp = required_attendees.split(";")    
+    for i in tmp:
+        
+        if len(i.strip()) == 0:
+            continue
+
+        txt += f"{i.strip()}\n"
+    
+    if len(optional_attendees.strip()) > 0:
+        txt += f"\n<b>OptionalAttendees</b>: \n"
+    
+    tmp = optional_attendees.split(";")    
+    for i in tmp:
+        
+        if len(i.strip()) == 0:
+            continue
+        
+        txt += f"{i.strip()}\n"
+    
+    
+    return txt
+
 if __name__ == '__main__':
     
     event = {"body": '''{
@@ -68,8 +104,7 @@ if __name__ == '__main__':
         "IsRecurring":  false,
         "Organizer":  "Kettle, Mark",
         "RequiredAttendees":  "Kettle, Mark; Malik, Ashar; Karmanov, Igor; Woods, Mike; Geldrez, Valentina; Khazin, Vladimir; Dossani, Hiren; Wu, Bo",
-        "OptionalAttendees":  ""
+        "OptionalAttendees":  "Sousa, Gabriela"
     }'''}
-    
     
     print(lambda_handler(event, None))
