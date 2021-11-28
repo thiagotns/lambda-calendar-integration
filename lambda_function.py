@@ -11,7 +11,14 @@ def lambda_handler(event, context):
     
     print("## event: " + json.dumps(event))
     
-    payload = json.loads(event['body'])
+    try:
+        payload = json.loads(event['body'])
+    except Exception as e:
+        print(e)
+        return {
+            'statusCode': 412,
+            'body': "Invalid event body"
+        }
     
     if event['httpMethod'] == 'POST':
         return create(payload)
@@ -34,17 +41,17 @@ def lambda_handler(event, context):
 def create(payload):
     try:
         
-        entry_id = payload["EntryID"]
         start_utc = payload["StartUTC"]
         end_utc = payload["EndUTC"]
         subject = payload["Subject"]
         organizer = payload["Organizer"]
+        categories = payload["Categories"]
         required_attendees = payload["RequiredAttendees"] 
         optional_attendees = payload["OptionalAttendees"]
         
         body = {
             "summary": subject, 
-            "description": generate_description(subject, organizer, required_attendees, optional_attendees),
+            "description": generate_description(subject, organizer, required_attendees, optional_attendees, categories),
             "start": {"dateTime": start_utc, "timeZone": 'UTC'}, 
             "end": {"dateTime": end_utc, "timeZone": 'UTC'}
         }
@@ -84,17 +91,25 @@ def get_service_account_credentials():
         "client_x509_cert_url": os.environ['client_x509_cert_url']
     }
 
-def generate_description(subject, organizer, required_attendees, optional_attendees):
+def generate_description(subject, organizer, required_attendees, optional_attendees, categories):
     
-    txt = f"<b>{subject}</b>\n<b>Organizer:</b> {organizer}\n\n<b>RequiredAttendees:</b></n>\n"
+    txt = f"<b>{subject}</b>\n<b>Organizer:</b> {organizer}\n"
     
+    if len(categories.strip()) > 0:
+        txt += f"\n<b>Categories:</b>\n"
+    
+    tmp = categories.split(";")
+    for i in tmp:
+        if len(i.strip()) == 0:
+            continue
+        txt += f"{i.strip()}\n"
+    
+    txt += "\n<b>RequiredAttendees:</b></n>"
     
     tmp = required_attendees.split(";")    
     for i in tmp:
-        
         if len(i.strip()) == 0:
             continue
-
         txt += f"{i.strip()}\n"
     
     if len(optional_attendees.strip()) > 0:
@@ -102,12 +117,9 @@ def generate_description(subject, organizer, required_attendees, optional_attend
     
     tmp = optional_attendees.split(";")    
     for i in tmp:
-        
         if len(i.strip()) == 0:
             continue
-        
         txt += f"{i.strip()}\n"
-    
     
     return txt
 
@@ -121,7 +133,7 @@ if __name__ == '__main__':
         "StartUTC":  "2021-11-24T08:00:00Z",
         "Duration":  60,
         "EndUTC":  "2021-11-24T09:00:00Z",
-        "Categories":  "",
+        "Categories":  "Cat1; Cat2",
         "Subject":  "Walk through the CR22 R1893 timelines",
         "IsRecurring":  false,
         "Organizer":  "Kettle, Mark",
