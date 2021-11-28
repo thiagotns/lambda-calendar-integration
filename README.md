@@ -1,6 +1,6 @@
 # lambda-calendar-integration
 
-Lambda function to integrate with google calendar
+Lambda function to google calendar integration
 
 ## POST
 
