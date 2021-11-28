@@ -6,6 +6,8 @@ Lambda function to integrate with google calendar
 
 Create a new Event.
 
+Request Body:
+
 ```
 {
     "StartUTC":  "2021-11-24T08:00:00Z",
@@ -19,9 +21,14 @@ Create a new Event.
 }
 ```
 
+Response: Created Google Calendar event object
+
 ## PUT
 
 Update a given EntryID event.
+
+
+Request Body:
 
 ```
 {
@@ -36,6 +43,9 @@ Update a given EntryID event.
     "OptionalAttendees":  ""
 }
 ```
+
+Response: Updated Google Calendar event object
+
 
 ## DELETE /{id}
 
