@@ -12,12 +12,15 @@ def lambda_handler(event, context):
     print("## event: " + json.dumps(event))
     
     try:
-        payload = json.loads(event['body'])
+        if event['httpMethod'] != 'DELETE':
+            payload = json.loads(event['body'])
+        else:
+            payload = event['path'].replace("/", "")
     except Exception as e:
         print(e)
         return {
             'statusCode': 412,
-            'body': "Invalid event body"
+            'body': "Invalid event body or url parameter"
         }
     
     if event['httpMethod'] == 'POST':
@@ -25,10 +28,7 @@ def lambda_handler(event, context):
     elif event['httpMethod'] == 'PUT':
         return update(payload)
     elif event['httpMethod'] == 'DELETE':
-        return {
-            'statusCode': 501,
-            'body': "Not Implemented"
-        }
+        return delete(payload)
     else:
         return {
             'statusCode': 405,
@@ -111,6 +111,32 @@ def update(payload):
         'body': json.dumps(event)
     }
 
+def delete(payload):
+    try:
+        
+        entry_id = payload
+                
+    except Exception as e:
+        print(e)
+        return {
+            'statusCode': 412,
+            'body': "Invalid Payload"
+        }
+
+    try:
+        service = create_service(get_service_account_credentials())
+        event = service.events().delete(calendarId=CALENDAR_ID, eventId=entry_id).execute()
+    except Exception as e:
+        return {
+            'statusCode': json.loads(e.content)['error']['code'],
+            'body': json.loads(e.content)['error']['message']
+        }
+
+    return {
+        'statusCode': 200,
+        'body': "deleted"
+    }
+
 def create_service(credentials):
     credentials = service_account.Credentials.from_service_account_info(credentials, scopes=SCOPES)
     service = build('calendar', 'v3', credentials=credentials)
@@ -166,9 +192,9 @@ def generate_description(subject, organizer, required_attendees, optional_attend
 if __name__ == '__main__':
     
     event = {
-        "httpMethod": "PUT",
+        "httpMethod": "DELETE",
         "body": '''{
-        "EntryID":  "kevffela3sdhq95r79964j228g_",
+        "EntryID":  "d3dph21v3b59a97ohnn1p8mc58",
         "LastModificationTime":  "2021-11-24T03:17:25Z",
         "StartUTC":  "2021-11-24T08:00:00Z",
         "Duration":  60,
