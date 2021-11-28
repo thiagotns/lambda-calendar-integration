@@ -97,8 +97,14 @@ def update(payload):
             'body': "Invalid Payload"
         }
 
-    service = create_service(get_service_account_credentials())
-    event = service.events().update(calendarId=CALENDAR_ID, eventId=entry_id, body=body).execute()
+    try:
+        service = create_service(get_service_account_credentials())
+        event = service.events().update(calendarId=CALENDAR_ID, eventId=entry_id, body=body).execute()
+    except Exception as e:
+        return {
+            'statusCode': json.loads(e.content)['error']['code'],
+            'body': json.loads(e.content)['error']['message']
+        }
 
     return {
         'statusCode': 200,
@@ -162,7 +168,7 @@ if __name__ == '__main__':
     event = {
         "httpMethod": "PUT",
         "body": '''{
-        "EntryID":  "kevffela3sdhq95r79964j228g",
+        "EntryID":  "kevffela3sdhq95r79964j228g_",
         "LastModificationTime":  "2021-11-24T03:17:25Z",
         "StartUTC":  "2021-11-24T08:00:00Z",
         "Duration":  60,
