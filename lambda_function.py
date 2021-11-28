@@ -9,10 +9,30 @@ CALENDAR_ID = os.environ['calendar_id']
 
 def lambda_handler(event, context):
     
+    print("## event: " + json.dumps(event))
+    
+    payload = json.loads(event['body'])
+    
+    if event['httpMethod'] == 'POST':
+        return create(payload)
+    elif event['httpMethod'] == 'PUT':
+        return {
+            'statusCode': 501,
+            'body': "Not Implemented"
+        }
+    elif event['httpMethod'] == 'DELETE':
+        return {
+            'statusCode': 501,
+            'body': "Not Implemented"
+        }
+    else:
+        return {
+            'statusCode': 405,
+            'body': "Method Not Allowed"
+        }
+    
+def create(payload):
     try:
-        print("## event: " + json.dumps(event))
-        
-        payload = json.loads(event['body'])
         
         entry_id = payload["EntryID"]
         start_utc = payload["StartUTC"]
@@ -41,7 +61,7 @@ def lambda_handler(event, context):
 
     return {
         'statusCode': 200,
-        'body': event
+        'body': json.dumps(event)
     }
 
 def create_service(credentials):
@@ -93,7 +113,9 @@ def generate_description(subject, organizer, required_attendees, optional_attend
 
 if __name__ == '__main__':
     
-    event = {"body": '''{
+    event = {
+        "httpMethod": "POST",
+        "body": '''{
         "EntryID":  "00000000E8FB26FEFA81FC4F953DB0E4DF42269B070041615AEA52DE994E9D9CB215D81FC2DF00000000010D000041615AEA52DE994E9D9CB215D81FC2DF00000D824C730000",
         "LastModificationTime":  "2021-11-24T03:17:25Z",
         "StartUTC":  "2021-11-24T08:00:00Z",
