@@ -23,10 +23,7 @@ def lambda_handler(event, context):
     if event['httpMethod'] == 'POST':
         return create(payload)
     elif event['httpMethod'] == 'PUT':
-        return {
-            'statusCode': 501,
-            'body': "Not Implemented"
-        }
+        return update(payload)
     elif event['httpMethod'] == 'DELETE':
         return {
             'statusCode': 501,
@@ -65,6 +62,43 @@ def create(payload):
 
     service = create_service(get_service_account_credentials())
     event = service.events().insert(calendarId=CALENDAR_ID, body=body).execute()
+
+    return {
+        'statusCode': 200,
+        'body': json.dumps(event)
+    }
+    
+    
+    
+def update(payload):
+    try:
+        
+        entry_id = payload["EntryID"]
+        start_utc = payload["StartUTC"]
+        end_utc = payload["EndUTC"]
+        subject = payload["Subject"]
+        organizer = payload["Organizer"]
+        categories = payload["Categories"]
+        required_attendees = payload["RequiredAttendees"] 
+        optional_attendees = payload["OptionalAttendees"]
+        
+        body = {
+            "eventId": entry_id,
+            "summary": subject, 
+            "description": generate_description(subject, organizer, required_attendees, optional_attendees, categories),
+            "start": {"dateTime": start_utc, "timeZone": 'UTC'}, 
+            "end": {"dateTime": end_utc, "timeZone": 'UTC'}
+        }
+                
+    except Exception as e:
+        print(e)
+        return {
+            'statusCode': 412,
+            'body': "Invalid Payload"
+        }
+
+    service = create_service(get_service_account_credentials())
+    event = service.events().update(calendarId=CALENDAR_ID, eventId=entry_id, body=body).execute()
 
     return {
         'statusCode': 200,
@@ -126,19 +160,19 @@ def generate_description(subject, organizer, required_attendees, optional_attend
 if __name__ == '__main__':
     
     event = {
-        "httpMethod": "POST",
+        "httpMethod": "PUT",
         "body": '''{
-        "EntryID":  "00000000E8FB26FEFA81FC4F953DB0E4DF42269B070041615AEA52DE994E9D9CB215D81FC2DF00000000010D000041615AEA52DE994E9D9CB215D81FC2DF00000D824C730000",
+        "EntryID":  "kevffela3sdhq95r79964j228g",
         "LastModificationTime":  "2021-11-24T03:17:25Z",
         "StartUTC":  "2021-11-24T08:00:00Z",
         "Duration":  60,
         "EndUTC":  "2021-11-24T09:00:00Z",
         "Categories":  "Cat1; Cat2",
-        "Subject":  "Walk through the CR22 R1893 timelines",
+        "Subject":  "Walk through the CR22 R1893 timelines - updated",
         "IsRecurring":  false,
         "Organizer":  "Kettle, Mark",
         "RequiredAttendees":  "Kettle, Mark; Malik, Ashar; Karmanov, Igor; Woods, Mike; Geldrez, Valentina; Khazin, Vladimir; Dossani, Hiren; Wu, Bo",
-        "OptionalAttendees":  "Sousa, Gabriela"
+        "OptionalAttendees":  ""
     }'''}
     
     print(lambda_handler(event, None))
