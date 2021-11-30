@@ -9,7 +9,7 @@ CALENDAR_ID = os.environ['calendar_id']
 
 def lambda_handler(event, context):
     
-    #print("## event: " + json.dumps(event))
+    print("## event: " + json.dumps(event))
     
     try:
         payload = json.loads(event['body'])
@@ -35,9 +35,10 @@ def lambda_handler(event, context):
     
     return {
         'statusCode': 200,
-        'body': "Created"
+        'body': "Successful"
     }
     
+#create a new event
 def create(event):
     try:
         
@@ -71,7 +72,7 @@ def create(event):
     return True
     
     
-    
+#update a event, if not exists, create it
 def update(payload):
     try:
         print("Updating: " + payload["Subject"])
@@ -117,6 +118,7 @@ def update(payload):
 
     return True
 
+#get event ids from the given date (day)
 def get_ids_from_day(day):
     
     start = day[0:day.find("T")] + 'T00:00:00Z'
@@ -133,6 +135,7 @@ def get_ids_from_day(day):
 
     return l
 
+#helper - get the list of event id from the payload
 def get_ids_from_payload(payload):
     
     l = []
@@ -142,6 +145,8 @@ def get_ids_from_payload(payload):
 
     return l
 
+#delete the events thats not in the payload
+#payload contains only one day events
 def delete(payload):
     
     tmp = payload[0]["StartUTC"]
@@ -217,25 +222,3 @@ def generate_description(subject, organizer, required_attendees, optional_attend
         txt += f"{i.strip()}\n"
     
     return txt
-
-if __name__ == '__main__':
-    
-    event = {
-        "httpMethod": "POST",
-        "body": '''[
-            {
-                "EntryID":  "d3dph21v3b59a97ohnn1p8mc582",
-                "LastModificationTime":  "2021-11-24T03:17:25Z",
-                "StartUTC":  "2021-11-25T08:00:00Z",
-                "Duration":  60,
-                "EndUTC":  "2021-11-25T09:00:00Z",
-                "Categories":  "Cat1; Cat2",
-                "Subject":  "2. Walk through the CR22 R1893 timelines - updated",
-                "IsRecurring":  false,
-                "Organizer":  "Kettle, Mark",
-                "RequiredAttendees":  "Kettle, Mark; Malik, Ashar; Karmanov, Igor; Woods, Mike; Geldrez, Valentina; Khazin, Vladimir; Dossani, Hiren; Wu, Bo",
-                "OptionalAttendees":  ""
-            }
-        ]'''}
-    
-    print(lambda_handler(event, None))
