@@ -1,6 +1,12 @@
 # lambda-calendar-integration
 
-Lambda function to google calendar integration. Insert, update or delete events according to the payload. Receives events for one day at a time. Accept only POST requests.
+Lambda function to google calendar integration. 
+
+Insert, update or delete events according to the payload. 
+
+Receives events for one day at a time. 
+
+Accept only POST requests.
 
 ## Payload
 
