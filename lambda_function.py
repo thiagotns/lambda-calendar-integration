@@ -24,6 +24,7 @@ def lambda_handler(event, context):
         for e in payload:
             update(e)
             
+        delete(payload)
         
     except Exception as e:
         print(e)
@@ -116,31 +117,54 @@ def update(payload):
 
     return True
 
-def delete(payload):
-    try:
-        
-        entry_id = payload
-                
-    except Exception as e:
-        print(e)
-        return {
-            'statusCode': 412,
-            'body': "Invalid Payload"
-        }
+def get_ids_from_day(day):
+    
+    start = day[0:day.find("T")] + 'T00:00:00Z'
+    end = day[0:day.find("T")] + 'T23:59:59Z'
+    
+    service = create_service(get_service_account_credentials())
+    events_result = service.events().list(calendarId=CALENDAR_ID, timeMin=start, timeMax=end).execute()
+    events = events_result.get('items', [])
+    
+    l = []
+    
+    for e in events:
+        l.append(e['id'])
 
+    return l
+
+def get_ids_from_payload(payload):
+    
+    l = []
+    
+    for e in payload:
+        l.append(e["EntryID"])
+
+    return l
+
+def delete(payload):
+    
+    tmp = payload[0]["StartUTC"]
+    
+    ids_calendar = get_ids_from_day(tmp)
+    ids_payload = get_ids_from_payload(payload)
+    
     try:
         service = create_service(get_service_account_credentials())
-        event = service.events().delete(calendarId=CALENDAR_ID, eventId=entry_id).execute()
+        tmp = ''
+        
+        for i in ids_calendar:
+            tmp = i
+            if i not in ids_payload:
+                print(f"Delete: {i}")
+                event = service.events().delete(calendarId=CALENDAR_ID, eventId=i).execute()
+    
     except Exception as e:
-        return {
-            'statusCode': json.loads(e.content)['error']['code'],
-            'body': json.loads(e.content)['error']['message']
-        }
+        print(e)
+        raise ValueError('Error deleting ' + tmp)
+        return False
 
-    return {
-        'statusCode': 200,
-        'body': "deleted"
-    }
+    return True
 
 def create_service(credentials):
     credentials = service_account.Credentials.from_service_account_info(credentials, scopes=SCOPES)
@@ -200,52 +224,13 @@ if __name__ == '__main__':
         "httpMethod": "POST",
         "body": '''[
             {
-                "EntryID":  "d3dph21v3b59a97ohnn1p8mc581",
-                "LastModificationTime":  "2021-11-24T03:17:25Z",
-                "StartUTC":  "2021-11-24T08:00:00Z",
-                "Duration":  60,
-                "EndUTC":  "2021-11-24T09:00:00Z",
-                "Categories":  "Cat1; Cat2",
-                "Subject":  "1. Walk through the CR22 R1893 timelines",
-                "IsRecurring":  false,
-                "Organizer":  "Kettle, Mark",
-                "RequiredAttendees":  "Kettle, Mark; Malik, Ashar; Karmanov, Igor; Woods, Mike; Geldrez, Valentina; Khazin, Vladimir; Dossani, Hiren; Wu, Bo",
-                "OptionalAttendees":  ""
-            },
-            {
                 "EntryID":  "d3dph21v3b59a97ohnn1p8mc582",
                 "LastModificationTime":  "2021-11-24T03:17:25Z",
-                "StartUTC":  "2021-11-24T08:00:00Z",
+                "StartUTC":  "2021-11-25T08:00:00Z",
                 "Duration":  60,
-                "EndUTC":  "2021-11-24T09:00:00Z",
+                "EndUTC":  "2021-11-25T09:00:00Z",
                 "Categories":  "Cat1; Cat2",
                 "Subject":  "2. Walk through the CR22 R1893 timelines - updated",
-                "IsRecurring":  false,
-                "Organizer":  "Kettle, Mark",
-                "RequiredAttendees":  "Kettle, Mark; Malik, Ashar; Karmanov, Igor; Woods, Mike; Geldrez, Valentina; Khazin, Vladimir; Dossani, Hiren; Wu, Bo",
-                "OptionalAttendees":  ""
-            },
-            {
-                "EntryID":  "d3dph21v3b59a97ohnn1p8mc583",
-                "LastModificationTime":  "2021-11-24T03:17:25Z",
-                "StartUTC":  "2021-11-24T08:00:00Z",
-                "Duration":  60,
-                "EndUTC":  "2021-11-24T09:00:00Z",
-                "Categories":  "Cat1; Cat2",
-                "Subject":  "3. Walk through the CR22 R1893 timelines - updated",
-                "IsRecurring":  false,
-                "Organizer":  "Kettle, Mark",
-                "RequiredAttendees":  "Kettle, Mark; Malik, Ashar; Karmanov, Igor; Woods, Mike; Geldrez, Valentina; Khazin, Vladimir; Dossani, Hiren; Wu, Bo",
-                "OptionalAttendees":  ""
-            },
-            {
-                "EntryID":  "d3dph21v3b59a97ohnn1p8mc584",
-                "LastModificationTime":  "2021-11-24T03:17:25Z",
-                "StartUTC":  "2021-11-24T08:00:00Z",
-                "Duration":  60,
-                "EndUTC":  "2021-11-24T09:00:00Z",
-                "Categories":  "Cat1; Cat2",
-                "Subject":  "4. Walk through the CR22 R1893 timelines - updated",
                 "IsRecurring":  false,
                 "Organizer":  "Kettle, Mark",
                 "RequiredAttendees":  "Kettle, Mark; Malik, Ashar; Karmanov, Igor; Woods, Mike; Geldrez, Valentina; Khazin, Vladimir; Dossani, Hiren; Wu, Bo",
