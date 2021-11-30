@@ -9,13 +9,10 @@ CALENDAR_ID = os.environ['calendar_id']
 
 def lambda_handler(event, context):
     
-    print("## event: " + json.dumps(event))
+    #print("## event: " + json.dumps(event))
     
     try:
-        if event['httpMethod'] != 'DELETE':
-            payload = json.loads(event['body'])
-        else:
-            payload = event['path'].replace("/", "")
+        payload = json.loads(event['body'])
     except Exception as e:
         print(e)
         return {
@@ -23,55 +20,60 @@ def lambda_handler(event, context):
             'body': "Invalid event body or url parameter"
         }
     
-    if event['httpMethod'] == 'POST':
-        return create(payload)
-    elif event['httpMethod'] == 'PUT':
-        return update(payload)
-    elif event['httpMethod'] == 'DELETE':
-        return delete(payload)
-    else:
+    try:
+        for e in payload:
+            update(e)
+            
+        
+    except Exception as e:
+        print(e)
         return {
-            'statusCode': 405,
-            'body': "Method Not Allowed"
+            'statusCode': 500,
+            'body': str(e)
         }
     
-def create(payload):
+    return {
+        'statusCode': 200,
+        'body': "Created"
+    }
+    
+def create(event):
     try:
         
-        start_utc = payload["StartUTC"]
-        end_utc = payload["EndUTC"]
-        subject = payload["Subject"]
-        organizer = payload["Organizer"]
-        categories = payload["Categories"]
-        required_attendees = payload["RequiredAttendees"] 
-        optional_attendees = payload["OptionalAttendees"]
+        print("Inserting: " + event["Subject"])
+        
+        entry_id = event["EntryID"]
+        start_utc = event["StartUTC"]
+        end_utc = event["EndUTC"]
+        subject = event["Subject"]
+        organizer = event["Organizer"]
+        categories = event["Categories"]
+        required_attendees = event["RequiredAttendees"] 
+        optional_attendees = event["OptionalAttendees"]
         
         body = {
+            "id": entry_id,
             "summary": subject, 
             "description": generate_description(subject, organizer, required_attendees, optional_attendees, categories),
             "start": {"dateTime": start_utc, "timeZone": 'UTC'}, 
             "end": {"dateTime": end_utc, "timeZone": 'UTC'}
         }
-                
+        
+        service = create_service(get_service_account_credentials())
+        event = service.events().insert(calendarId=CALENDAR_ID, body=body).execute()
+
     except Exception as e:
         print(e)
-        return {
-            'statusCode': 412,
-            'body': "Invalid Payload"
-        }
+        raise ValueError('Error creating ' + event["Subject"])
+        return False
 
-    service = create_service(get_service_account_credentials())
-    event = service.events().insert(calendarId=CALENDAR_ID, body=body).execute()
-
-    return {
-        'statusCode': 200,
-        'body': json.dumps(event)
-    }
+    return True
     
     
     
 def update(payload):
     try:
+        print("Updating: " + payload["Subject"])
         
         entry_id = payload["EntryID"]
         start_utc = payload["StartUTC"]
@@ -83,7 +85,7 @@ def update(payload):
         optional_attendees = payload["OptionalAttendees"]
         
         body = {
-            "eventId": entry_id,
+            "id": entry_id,
             "summary": subject, 
             "description": generate_description(subject, organizer, required_attendees, optional_attendees, categories),
             "start": {"dateTime": start_utc, "timeZone": 'UTC'}, 
@@ -92,24 +94,27 @@ def update(payload):
                 
     except Exception as e:
         print(e)
-        return {
-            'statusCode': 412,
-            'body': "Invalid Payload"
-        }
+        raise ValueError('Error updating ' + event["Subject"])
+        return False
 
     try:
         service = create_service(get_service_account_credentials())
         event = service.events().update(calendarId=CALENDAR_ID, eventId=entry_id, body=body).execute()
     except Exception as e:
-        return {
-            'statusCode': json.loads(e.content)['error']['code'],
-            'body': json.loads(e.content)['error']['message']
-        }
+        
+        status_code = json.loads(e.content)['error']['code']
+        msg = json.loads(e.content)['error']['message']
+        
+        print(f"{status_code} - {msg}")
+        
+        if status_code == 404:
+            return create(payload)
+        
+        print(e)
+        raise ValueError('Error updating ' + event["Subject"])
+        return False
 
-    return {
-        'statusCode': 200,
-        'body': json.dumps(event)
-    }
+    return True
 
 def delete(payload):
     try:
@@ -192,19 +197,60 @@ def generate_description(subject, organizer, required_attendees, optional_attend
 if __name__ == '__main__':
     
     event = {
-        "httpMethod": "DELETE",
-        "body": '''{
-        "EntryID":  "d3dph21v3b59a97ohnn1p8mc58",
-        "LastModificationTime":  "2021-11-24T03:17:25Z",
-        "StartUTC":  "2021-11-24T08:00:00Z",
-        "Duration":  60,
-        "EndUTC":  "2021-11-24T09:00:00Z",
-        "Categories":  "Cat1; Cat2",
-        "Subject":  "Walk through the CR22 R1893 timelines - updated",
-        "IsRecurring":  false,
-        "Organizer":  "Kettle, Mark",
-        "RequiredAttendees":  "Kettle, Mark; Malik, Ashar; Karmanov, Igor; Woods, Mike; Geldrez, Valentina; Khazin, Vladimir; Dossani, Hiren; Wu, Bo",
-        "OptionalAttendees":  ""
-    }'''}
+        "httpMethod": "POST",
+        "body": '''[
+            {
+                "EntryID":  "d3dph21v3b59a97ohnn1p8mc581",
+                "LastModificationTime":  "2021-11-24T03:17:25Z",
+                "StartUTC":  "2021-11-24T08:00:00Z",
+                "Duration":  60,
+                "EndUTC":  "2021-11-24T09:00:00Z",
+                "Categories":  "Cat1; Cat2",
+                "Subject":  "1. Walk through the CR22 R1893 timelines",
+                "IsRecurring":  false,
+                "Organizer":  "Kettle, Mark",
+                "RequiredAttendees":  "Kettle, Mark; Malik, Ashar; Karmanov, Igor; Woods, Mike; Geldrez, Valentina; Khazin, Vladimir; Dossani, Hiren; Wu, Bo",
+                "OptionalAttendees":  ""
+            },
+            {
+                "EntryID":  "d3dph21v3b59a97ohnn1p8mc582",
+                "LastModificationTime":  "2021-11-24T03:17:25Z",
+                "StartUTC":  "2021-11-24T08:00:00Z",
+                "Duration":  60,
+                "EndUTC":  "2021-11-24T09:00:00Z",
+                "Categories":  "Cat1; Cat2",
+                "Subject":  "2. Walk through the CR22 R1893 timelines - updated",
+                "IsRecurring":  false,
+                "Organizer":  "Kettle, Mark",
+                "RequiredAttendees":  "Kettle, Mark; Malik, Ashar; Karmanov, Igor; Woods, Mike; Geldrez, Valentina; Khazin, Vladimir; Dossani, Hiren; Wu, Bo",
+                "OptionalAttendees":  ""
+            },
+            {
+                "EntryID":  "d3dph21v3b59a97ohnn1p8mc583",
+                "LastModificationTime":  "2021-11-24T03:17:25Z",
+                "StartUTC":  "2021-11-24T08:00:00Z",
+                "Duration":  60,
+                "EndUTC":  "2021-11-24T09:00:00Z",
+                "Categories":  "Cat1; Cat2",
+                "Subject":  "3. Walk through the CR22 R1893 timelines - updated",
+                "IsRecurring":  false,
+                "Organizer":  "Kettle, Mark",
+                "RequiredAttendees":  "Kettle, Mark; Malik, Ashar; Karmanov, Igor; Woods, Mike; Geldrez, Valentina; Khazin, Vladimir; Dossani, Hiren; Wu, Bo",
+                "OptionalAttendees":  ""
+            },
+            {
+                "EntryID":  "d3dph21v3b59a97ohnn1p8mc584",
+                "LastModificationTime":  "2021-11-24T03:17:25Z",
+                "StartUTC":  "2021-11-24T08:00:00Z",
+                "Duration":  60,
+                "EndUTC":  "2021-11-24T09:00:00Z",
+                "Categories":  "Cat1; Cat2",
+                "Subject":  "4. Walk through the CR22 R1893 timelines - updated",
+                "IsRecurring":  false,
+                "Organizer":  "Kettle, Mark",
+                "RequiredAttendees":  "Kettle, Mark; Malik, Ashar; Karmanov, Igor; Woods, Mike; Geldrez, Valentina; Khazin, Vladimir; Dossani, Hiren; Wu, Bo",
+                "OptionalAttendees":  ""
+            }
+        ]'''}
     
     print(lambda_handler(event, None))
